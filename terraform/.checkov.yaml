@@ -11,3 +11,4 @@ skip-check:
   - CKV2_AWS_62   # S3 event notifications — not applicable
   - CKV_AWS_309   # API auth — public API by design
   - CKV_AWS_300   # S3 abort failed uploads — low risk for dev
+  - CKV_AWS_115   # Lambda concurrency — account limit prevents this
