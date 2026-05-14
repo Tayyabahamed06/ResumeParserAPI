@@ -1,0 +1,82 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scanners
+        run: pip install bandit checkov
+
+      - name: Bandit — Python security scan
+        run: bandit -r lambda/ -f txt
+
+      - name: Checkov — Terraform IaC scan
+        run: checkov -d terraform/ --config-file terraform/.checkov.yaml --quiet
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: security-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install boto3 PyPDF2
+
+      - name: Run tests
+        run: python tests/test_parser.py
+
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    needs: [security-scan, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Package Lambda
+        run: |
+          pip install PyPDF2 -t lambda/package/
+          cp lambda/parser.py lambda/package/
+          cd lambda/package && zip -r ../parser.zip .
+          cd ../.. && rm -rf lambda/package
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: terraform

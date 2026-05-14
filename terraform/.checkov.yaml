@@ -1,0 +1,13 @@
+skip-check:
+  - CKV_AWS_117   # Lambda VPC — not needed for public API in dev
+  - CKV_AWS_116   # DLQ — acceptable for dev environment
+  - CKV_AWS_173   # KMS env encryption — AES256 sufficient for dev
+  - CKV_AWS_272   # Code signing — enterprise requirement, not dev
+  - CKV_AWS_338   # 1yr log retention — 30 days sufficient for dev
+  - CKV_AWS_158   # KMS log encryption — cost prohibitive for dev
+  - CKV_AWS_144   # Cross-region replication — not needed for dev
+  - CKV_AWS_145   # KMS S3 encryption — AES256 sufficient for dev
+  - CKV_AWS_18    # S3 access logging — not needed for dev
+  - CKV2_AWS_62   # S3 event notifications — not applicable
+  - CKV_AWS_309   # API auth — public API by design
+  - CKV_AWS_300   # S3 abort failed uploads — low risk for dev
