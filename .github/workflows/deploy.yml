@@ -84,13 +84,25 @@ jobs:
         run: terraform init
         working-directory: terraform
 
+      - name: Get existing resource IDs
+        id: get_ids
+        run: |
+          BUCKET=$(aws s3api list-buckets --query 'Buckets[?starts_with(Name, `resume-parser-uploads-dev`)].Name' --output text)
+          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
+          API_ID=$(aws apigatewayv2 get-apis --query 'Items[?Name==`resume-parser-api-dev`].ApiId' --output text)
+          echo "api_id=$API_ID" >> $GITHUB_OUTPUT
+
       - name: Import existing resources
         working-directory: terraform
         continue-on-error: true
         run: |
-          terraform import aws_iam_role.lambda_role resume-parser-lambda-role-dev
-          terraform import aws_cloudwatch_log_group.api_logs /aws/apigateway/resume-parser-dev
-          terraform import aws_cloudwatch_log_group.lambda_logs /aws/lambda/resume-parser-dev
+          terraform import aws_iam_role.lambda_role resume-parser-lambda-role-dev || true
+          terraform import aws_iam_role_policy.lambda_policy resume-parser-lambda-role-dev:resume-parser-lambda-policy || true
+          terraform import aws_lambda_function.parser resume-parser-dev || true
+          terraform import aws_cloudwatch_log_group.lambda_logs /aws/lambda/resume-parser-dev || true
+          terraform import aws_cloudwatch_log_group.api_logs /aws/apigateway/resume-parser-dev || true
+          terraform import aws_s3_bucket.resumes ${{ steps.get_ids.outputs.bucket }} || true
+          terraform import aws_apigatewayv2_api.api ${{ steps.get_ids.outputs.api_id }} || true
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
