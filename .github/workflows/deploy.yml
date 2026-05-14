@@ -66,7 +66,6 @@ jobs:
           role-to-assume: arn:aws:iam::120337555647:role/github-actions-resume-parser
           aws-region: us-east-1
           audience: sts.amazonaws.com
-          http-proxy: ""
 
       - name: Verify AWS identity
         run: aws sts get-caller-identity
@@ -84,6 +83,14 @@ jobs:
       - name: Terraform Init
         run: terraform init
         working-directory: terraform
+
+      - name: Import existing resources
+        working-directory: terraform
+        continue-on-error: true
+        run: |
+          terraform import aws_iam_role.lambda_role resume-parser-lambda-role-dev
+          terraform import aws_cloudwatch_log_group.api_logs /aws/apigateway/resume-parser-dev
+          terraform import aws_cloudwatch_log_group.lambda_logs /aws/lambda/resume-parser-dev
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
